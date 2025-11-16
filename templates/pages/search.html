@@ -68,7 +68,8 @@
                                             <span class="position-absolute top-0 start-0 m-2 badge bg-primary fs-6">
                                                 #{{ forloop.counter }}
                                             </span>
-                                            <span class="position-absolute top-0 end-0 m-2 badge bg-success fs-6">
+                                            <span class="position-absolute top-0 end-0 m-2 badge fs-6 similarity-badge" 
+                                                  data-similarity="{{ result.similarity }}">
                                                 {{ result.similarity|floatformat:3 }}
                                             </span>
                                         </div>
@@ -83,9 +84,10 @@
                                             <div class="mb-2">
                                                 <label class="small text-muted mb-1">Match Percentage:</label>
                                                 <div class="progress">
-                                                    <div class="progress-bar bg-success" 
+                                                    <div class="progress-bar similarity-progress" 
                                                          role="progressbar" 
                                                          data-width="{{ result.similarity_percent }}"
+                                                         data-similarity="{{ result.similarity }}"
                                                          aria-valuenow="{{ result.similarity_percent }}" 
                                                          aria-valuemin="0" 
                                                          aria-valuemax="100">
@@ -150,11 +152,32 @@
         btn.disabled = true;
     });
     
-    // Set progress bar widths from data attributes
+    // Function to get color based on similarity score (0 to 1)
+    function getSimilarityColor(similarity) {
+        // Map similarity (0-1) to hue (0=red to 120=green)
+        const hue = similarity * 120;
+        return `hsl(${hue}, 70%, 50%)`;
+    }
+    
+    // Set progress bar widths and colors from data attributes
     document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('.progress-bar[data-width]').forEach(function(bar) {
+        // Update progress bars
+        document.querySelectorAll('.similarity-progress').forEach(function(bar) {
             const width = bar.getAttribute('data-width');
+            const similarity = parseFloat(bar.getAttribute('data-similarity'));
+            const color = getSimilarityColor(similarity);
+            
             bar.style.width = width + '%';
+            bar.style.backgroundColor = color;
+        });
+        
+        // Update similarity badges
+        document.querySelectorAll('.similarity-badge').forEach(function(badge) {
+            const similarity = parseFloat(badge.getAttribute('data-similarity'));
+            const color = getSimilarityColor(similarity);
+            
+            badge.style.backgroundColor = color;
+            badge.style.border = 'none';
         });
     });
 </script>
