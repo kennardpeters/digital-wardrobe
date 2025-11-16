@@ -1,0 +1,20 @@
+name: localRag
+channels:
+  - pytorch
+  - conda-forge
+dependencies:
+  - python=3.11
+  - jupyter>=1.0.0
+  - ipykernel>=6.25.0
+  - requests>=2.31.0
+  - pillow
+  - pytorch>=2.2.2
+  - torchvision
+  - psycopg2-binary>=2.9.0
+  - transformers
+  - numpy<2
+  - pip
+  - django>=4.2.0
+  - pip:
+    - fashion-clip
+  
