@@ -2,7 +2,7 @@
 from PIL import Image 
 
 print("loading image")
-image = Image.open("testimages/ropher.jpg")
+image = Image.open("testimages/ColorPallette.png")
 
 from fashion_clip.fashion_clip import FashionCLIP
 print("loading fashion clip")
