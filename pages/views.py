@@ -106,7 +106,7 @@ def upload(request):
     return render(request, 'pages/upload.html')
 
 def search(request):
-    """Search for similar items using FashionCLIP embeddings and pgvector"""
+    """Search for similar items using FashionCLIP embeddings and Python-based cosine similarity"""
     if request.method == 'POST':
         try:
             uploaded_file = request.FILES.get('image')
@@ -142,35 +142,46 @@ def search(request):
                 query_embeddings, ord=2, axis=-1, keepdims=True
             )
             
-            # Extract single embedding vector
-            query_vector = query_embeddings[0].tolist()
+            # Extract single embedding vector (keep as numpy array)
+            query_vector = query_embeddings[0]
             
-            # Perform similarity search using pgvector
-            from pgvector.psycopg2 import register_vector
-            
+            # Perform similarity search in Python
             with connection.cursor() as cursor:
-                # Register pgvector type
-                register_vector(connection)
-                
-                # Search for top 5 similar items using cosine distance
+                # Fetch all embeddings from database
                 cursor.execute("""
-                    SELECT title, path, 1 - (embedding <=> %s) AS similarity
+                    SELECT id, title, path, embedding
                     FROM wardrobe_items
-                    ORDER BY similarity DESC
-                    LIMIT 5;
-                """, [query_vector])
+                """)
                 
                 rows = cursor.fetchall()
                 
-                # Format results
-                results = []
-                for title, path, similarity in rows:
-                    results.append({
+                # Compute similarities in Python
+                similarities = []
+                for item_id, title, path, embedding in rows:
+                    # Parse embedding: PostgreSQL returns VECTOR as string like '[0.1,0.2,...]'
+                    if isinstance(embedding, str):
+                        # Remove brackets and split by comma
+                        embedding_str = embedding.strip('[]')
+                        embedding_list = [float(x) for x in embedding_str.split(',')]
+                    else:
+                        embedding_list = embedding
+                    
+                    # Convert to numpy array
+                    stored_vector = np.array(embedding_list, dtype=np.float32)
+                    
+                    # Compute cosine similarity (dot product since vectors are normalized)
+                    similarity = np.dot(query_vector, stored_vector)
+                    
+                    similarities.append({
+                        'id': item_id,
                         'title': title,
                         'path': path,
                         'similarity': float(similarity),
                         'similarity_percent': float(similarity) * 100
                     })
+                
+                # Sort by similarity (highest first) and take top 5
+                results = sorted(similarities, key=lambda x: x['similarity'], reverse=True)[:5]
             
             return render(request, 'pages/search.html', {
                 'results': results
