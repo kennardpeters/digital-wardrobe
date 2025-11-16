@@ -15,6 +15,7 @@ dependencies:
   - numpy<2
   - pip
   - django>=4.2.0
+  - pgvector
   - pip:
     - fashion-clip
   

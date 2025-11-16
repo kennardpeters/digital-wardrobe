@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+
+{% block title %}Search Similar Items - Digital Wardrobe{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-10 mx-auto">
+            <h1 class="display-4 mb-4 text-center">Find Similar Items</h1>
+            <p class="lead text-center mb-5">Upload an image and we'll find the most similar items in your wardrobe</p>
+            
+            {% if error %}
+                <div class="alert alert-danger" role="alert">
+                    <strong>Error:</strong> {{ error }}
+                </div>
+            {% endif %}
+            
+            <div class="card shadow mb-4">
+                <div class="card-body p-4">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="image" class="form-label">Upload Image to Search</label>
+                            <input type="file" class="form-control" id="image" name="image" 
+                                   accept="image/*" required>
+                            <small class="form-text text-muted">
+                                Upload a photo to find similar items in your wardrobe
+                            </small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div id="imagePreview" class="mt-3" style="display: none;">
+                                <label class="form-label">Preview:</label>
+                                <img id="preview" src="" alt="Preview" class="img-fluid rounded" 
+                                     style="max-height: 300px;">
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                                <i class="fas fa-search me-2"></i>Search Similar Items
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            {% if results %}
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0">
+                            <i class="fas fa-images me-2"></i>Top 5 Similar Items
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        {% if results %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Rank</th>
+                                            <th>Title</th>
+                                            <th>Image Path</th>
+                                            <th>Similarity Score</th>
+                                            <th>Match</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for result in results %}
+                                        <tr>
+                                            <td>
+                                                <span class="badge bg-primary">#{{ forloop.counter }}</span>
+                                            </td>
+                                            <td>
+                                                <strong>{{ result.title }}</strong>
+                                            </td>
+                                            <td>
+                                                <code>{{ result.path }}</code>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-success">
+                                                    {{ result.similarity|floatformat:4 }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div class="progress" style="width: 100px;">
+                                                    <div class="progress-bar" role="progressbar" 
+                                                         data-width="{{ result.similarity_percent }}"
+                                                         aria-valuenow="{{ result.similarity_percent }}" 
+                                                         aria-valuemin="0" aria-valuemax="100">
+                                                        {{ result.similarity_percent|floatformat:0 }}%
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div class="alert alert-info mt-4">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Note:</strong> Similarity scores range from 0 to 1, where 1 indicates a perfect match.
+                            </div>
+                        {% else %}
+                            <p class="text-muted text-center mb-0">No similar items found in the database.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+            
+            {% if not results and not error %}
+                <div class="card shadow">
+                    <div class="card-body text-center py-5">
+                        <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                        <h5>How it works:</h5>
+                        <ol class="text-start d-inline-block">
+                            <li>Upload a photo of a clothing item</li>
+                            <li>Our AI generates a 512-dimensional embedding</li>
+                            <li>We compare it against all items in your wardrobe using cosine similarity</li>
+                            <li>The top 5 most similar items are displayed with their scores</li>
+                        </ol>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    // Image preview
+    document.getElementById('image').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('preview').src = e.target.result;
+                document.getElementById('imagePreview').style.display = 'block';
+            }
+            reader.readAsDataURL(file);
+        }
+    });
+    
+    // Show loading state on submit
+    document.querySelector('form').addEventListener('submit', function() {
+        const btn = document.getElementById('submitBtn');
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Searching...';
+        btn.disabled = true;
+    });
+    
+    // Set progress bar widths from data attributes
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.progress-bar[data-width]').forEach(function(bar) {
+            const width = bar.getAttribute('data-width');
+            bar.style.width = width + '%';
+        });
+    });
+</script>
+{% endblock %}

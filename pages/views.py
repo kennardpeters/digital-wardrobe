@@ -70,10 +70,7 @@ def upload(request):
             )
             
             # Extract single embedding vector (remove batch dimension)
-            embedding_vector = image_embeddings[0]
-            
-            # Convert to list for database storage
-            embedding_list = embedding_vector.tolist()
+            embedding_vector = image_embeddings[0].tolist()
             
             # Save to database
             with connection.cursor() as cursor:
@@ -86,7 +83,7 @@ def upload(request):
                     INSERT INTO wardrobe_items (title, path, embedding)
                     VALUES (%s, %s, %s)
                     RETURNING id
-                """, [title, path, embedding_list])
+                """, [title, path, embedding_vector])
                 
                 item_id = cursor.fetchone()[0]
             
@@ -98,7 +95,7 @@ def upload(request):
                     'title': title,
                     'path': path
                 },
-                'embedding_shape': f"({len(embedding_list)},)"
+                'embedding_shape': f"({len(embedding_vector)},)"
             })
             
         except Exception as e:
@@ -107,3 +104,81 @@ def upload(request):
             })
     
     return render(request, 'pages/upload.html')
+
+def search(request):
+    """Search for similar items using FashionCLIP embeddings and pgvector"""
+    if request.method == 'POST':
+        try:
+            uploaded_file = request.FILES.get('image')
+            
+            if not uploaded_file:
+                return render(request, 'pages/search.html', {
+                    'error': 'Please select an image file'
+                })
+            
+            # Validate file size (10MB max)
+            if uploaded_file.size > 10 * 1024 * 1024:
+                return render(request, 'pages/search.html', {
+                    'error': 'File size must be less than 10MB'
+                })
+            
+            # Load image
+            image = Image.open(uploaded_file)
+            
+            # Convert to RGB if necessary
+            if image.mode != 'RGB':
+                image = image.convert('RGB')
+            
+            # Initialize FashionCLIP
+            from fashion_clip.fashion_clip import FashionCLIP
+            fclip = FashionCLIP('fashion-clip')
+            
+            # Generate embeddings for query image
+            images = [image]
+            query_embeddings = fclip.encode_images(images, batch_size=1)
+            
+            # Normalize embeddings
+            query_embeddings = query_embeddings / np.linalg.norm(
+                query_embeddings, ord=2, axis=-1, keepdims=True
+            )
+            
+            # Extract single embedding vector
+            query_vector = query_embeddings[0].tolist()
+            
+            # Perform similarity search using pgvector
+            from pgvector.psycopg2 import register_vector
+            
+            with connection.cursor() as cursor:
+                # Register pgvector type
+                register_vector(connection)
+                
+                # Search for top 5 similar items using cosine distance
+                cursor.execute("""
+                    SELECT title, path, 1 - (embedding <=> %s) AS similarity
+                    FROM wardrobe_items
+                    ORDER BY similarity DESC
+                    LIMIT 5;
+                """, [query_vector])
+                
+                rows = cursor.fetchall()
+                
+                # Format results
+                results = []
+                for title, path, similarity in rows:
+                    results.append({
+                        'title': title,
+                        'path': path,
+                        'similarity': float(similarity),
+                        'similarity_percent': float(similarity) * 100
+                    })
+            
+            return render(request, 'pages/search.html', {
+                'results': results
+            })
+            
+        except Exception as e:
+            return render(request, 'pages/search.html', {
+                'error': f'Error processing search: {str(e)}'
+            })
+    
+    return render(request, 'pages/search.html')
