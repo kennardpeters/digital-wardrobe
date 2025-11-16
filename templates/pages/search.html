@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Search Similar Items - Digital Wardrobe{% endblock %}
 
@@ -55,53 +56,53 @@
                     </div>
                     <div class="card-body">
                         {% if results %}
-                            <div class="table-responsive">
-                                <table class="table table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>Rank</th>
-                                            <th>Title</th>
-                                            <th>Image Path</th>
-                                            <th>Similarity Score</th>
-                                            <th>Match</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for result in results %}
-                                        <tr>
-                                            <td>
-                                                <span class="badge bg-primary">#{{ forloop.counter }}</span>
-                                            </td>
-                                            <td>
-                                                <strong>{{ result.title }}</strong>
-                                            </td>
-                                            <td>
-                                                <code>{{ result.path }}</code>
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-success">
-                                                    {{ result.similarity|floatformat:4 }}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <div class="progress" style="width: 100px;">
-                                                    <div class="progress-bar" role="progressbar" 
+                            <div class="row g-4">
+                                {% for result in results %}
+                                <div class="col-md-6 col-lg-4">
+                                    <div class="card h-100 shadow-sm">
+                                        <div class="position-relative">
+                                            <img src="{{ MEDIA_URL }}{{ result.path }}" 
+                                                 class="card-img-top" 
+                                                 alt="{{ result.title }}"
+                                                 style="height: 250px; object-fit: cover;">
+                                            <span class="position-absolute top-0 start-0 m-2 badge bg-primary fs-6">
+                                                #{{ forloop.counter }}
+                                            </span>
+                                            <span class="position-absolute top-0 end-0 m-2 badge bg-success fs-6">
+                                                {{ result.similarity|floatformat:3 }}
+                                            </span>
+                                        </div>
+                                        <div class="card-body">
+                                            <h5 class="card-title">{{ result.title }}</h5>
+                                            <div class="mb-2">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-folder me-1"></i>
+                                                    <code class="small">{{ result.path }}</code>
+                                                </small>
+                                            </div>
+                                            <div class="mb-2">
+                                                <label class="small text-muted mb-1">Match Percentage:</label>
+                                                <div class="progress">
+                                                    <div class="progress-bar bg-success" 
+                                                         role="progressbar" 
                                                          data-width="{{ result.similarity_percent }}"
                                                          aria-valuenow="{{ result.similarity_percent }}" 
-                                                         aria-valuemin="0" aria-valuemax="100">
-                                                        {{ result.similarity_percent|floatformat:0 }}%
+                                                         aria-valuemin="0" 
+                                                         aria-valuemax="100">
+                                                        {{ result.similarity_percent|floatformat:1 }}%
                                                     </div>
                                                 </div>
-                                            </td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
                             </div>
                             
                             <div class="alert alert-info mt-4">
                                 <i class="fas fa-info-circle me-2"></i>
-                                <strong>Note:</strong> Similarity scores range from 0 to 1, where 1 indicates a perfect match.
+                                <strong>Note:</strong> Similarity scores range from 0 to 1, where 1 indicates a perfect match. 
+                                Higher percentages indicate better matches.
                             </div>
                         {% else %}
                             <p class="text-muted text-center mb-0">No similar items found in the database.</p>

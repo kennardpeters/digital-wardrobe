@@ -1,8 +1,11 @@
 from django.shortcuts import render
 from django.db import connection
+from django.conf import settings
+from django.core.files.storage import default_storage
 from PIL import Image
 import numpy as np
 import io
+import os
 
 # Create your views here.
 
@@ -72,18 +75,24 @@ def upload(request):
             # Extract single embedding vector (remove batch dimension)
             embedding_vector = image_embeddings[0].tolist()
             
+            # Save uploaded file to media directory
+            # Create a unique filename to avoid conflicts
+            import uuid
+            file_extension = os.path.splitext(uploaded_file.name)[1]
+            unique_filename = f"{uuid.uuid4()}{file_extension}"
+            file_path = os.path.join('wardrobe_items', unique_filename)
+            
+            # Save the file
+            saved_path = default_storage.save(file_path, uploaded_file)
+            
             # Save to database
             with connection.cursor() as cursor:
-                # Store image path (for now, just use the filename)
-                # In production, you'd save the file to media storage
-                path = uploaded_file.name
-                
-                # Insert into database
+                # Insert into database with the saved file path
                 cursor.execute("""
                     INSERT INTO wardrobe_items (title, path, embedding)
                     VALUES (%s, %s, %s)
                     RETURNING id
-                """, [title, path, embedding_vector])
+                """, [title, saved_path, embedding_vector])
                 
                 item_id = cursor.fetchone()[0]
             
@@ -93,7 +102,7 @@ def upload(request):
                 'item': {
                     'id': item_id,
                     'title': title,
-                    'path': path
+                    'path': saved_path
                 },
                 'embedding_shape': f"({len(embedding_vector)},)"
             })
